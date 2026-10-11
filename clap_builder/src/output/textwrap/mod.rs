@@ -11,6 +11,9 @@ pub(crate) mod word_separators;
 pub(crate) mod wrap_algorithms;
 
 #[cfg(feature = "wrap_help")]
+use crate::util::join_display::JoinDisplayVecExt;
+
+#[cfg(feature = "wrap_help")]
 pub(crate) fn wrap(content: &str, hard_width: usize) -> String {
     let mut wrapper = wrap_algorithms::LineWrapper::new(hard_width);
     let mut total = Vec::new();
@@ -19,7 +22,7 @@ pub(crate) fn wrap(content: &str, hard_width: usize) -> String {
         let line = word_separators::find_words_ascii_space(line).collect::<Vec<_>>();
         total.extend(wrapper.wrap(line));
     }
-    total.join("")
+    total.join_display("").to_string()
 }
 
 #[cfg(not(feature = "wrap_help"))]

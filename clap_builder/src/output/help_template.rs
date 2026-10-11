@@ -7,6 +7,7 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 
 // Internal
 use crate::builder::PossibleValue;
@@ -21,6 +22,7 @@ use crate::output::display_width;
 use crate::output::wrap;
 use crate::util::Escape;
 use crate::util::FlatSet;
+use crate::util::join_display::JoinDisplayVecExt;
 
 /// `clap` auto-generated help writer
 pub(crate) struct AutoHelp<'cmd, 'writer> {
@@ -512,7 +514,7 @@ impl HelpTemplate<'_, '_> {
 
     /// Writes help for an argument to the wrapped stream.
     fn write_arg(&mut self, arg: &Arg, next_line_help: bool, longest: usize) {
-        let spec_vals = &self.spec_vals(arg);
+        let spec_vals = &self.spec_vals(arg).to_string();
 
         self.writer.push_str(TAB);
         self.short(arg);
@@ -730,12 +732,12 @@ impl HelpTemplate<'_, '_> {
         args.iter()
             .filter(|arg| should_show_arg(self.use_long, arg))
             .any(|arg| {
-                let spec_vals = &self.spec_vals(arg);
+                let spec_vals = self.spec_vals(arg);
                 self.arg_next_line_help(arg, spec_vals, longest)
             })
     }
 
-    fn arg_next_line_help(&self, arg: &Arg, spec_vals: &str, longest: usize) -> bool {
+    fn arg_next_line_help(&self, arg: &Arg, spec_vals: impl Display, longest: usize) -> bool {
         if self.next_line_help || arg.is_next_line_help_set() || self.use_long {
             // setting_next_line
             true
@@ -745,7 +747,7 @@ impl HelpTemplate<'_, '_> {
                 .get_help()
                 .or_else(|| arg.get_long_help())
                 .unwrap_or_default();
-            let h_w = h.display_width() + display_width(spec_vals);
+            let h_w = h.display_width() + display_width(&spec_vals.to_string());
             let taken = longest + TAB_WIDTH * 2;
             self.term_w >= taken
                 && (taken as f32 / self.term_w as f32) > 0.40
@@ -753,7 +755,7 @@ impl HelpTemplate<'_, '_> {
         }
     }
 
-    fn spec_vals(&self, a: &Arg) -> String {
+    fn spec_vals(&self, a: &Arg) -> impl Display {
         debug!("HelpTemplate::spec_vals: a={a}");
         let ctx = &self.styles.get_context();
         let ctx_val = &self.styles.get_context_value();
@@ -801,7 +803,7 @@ impl HelpTemplate<'_, '_> {
                     Cow::Owned(escaped) => Cow::Owned(escaped),
                 })
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join_display(" ");
 
             spec_vals.push(format!(
                 "{ctx}[default: {ctx:#}{ctx_val}{dvs}{ctx_val:#}{ctx}]{ctx:#}"
@@ -831,7 +833,7 @@ impl HelpTemplate<'_, '_> {
 
         if !als.is_empty() {
             let plural = pluralize(als.len(), "", "es");
-            let als = als.join(&val_sep);
+            let als = als.join_display(&val_sep);
             spec_vals.push(format!("{ctx}[alias{plural}: {ctx:#}{als}{ctx}]{ctx:#}"));
         }
 
@@ -845,13 +847,13 @@ impl HelpTemplate<'_, '_> {
                     .filter_map(PossibleValue::get_visible_quoted_name)
                     .map(|pv| format!("{ctx_val}{pv}{ctx_val:#}"))
                     .collect::<Vec<_>>()
-                    .join(&val_sep);
+                    .join_display(&val_sep);
 
                 spec_vals.push(format!("{ctx}[possible values: {ctx:#}{pvs}{ctx}]{ctx:#}"));
             }
         }
         let connector = if self.use_long { "\n" } else { " " };
-        spec_vals.join(connector)
+        spec_vals.join_display(connector)
     }
 
     fn get_spaces(&self, n: usize) -> String {
@@ -997,7 +999,7 @@ impl HelpTemplate<'_, '_> {
     ) {
         debug!("HelpTemplate::write_subcommand");
 
-        let spec_vals = &self.sc_spec_vals(cmd);
+        let spec_vals = &self.sc_spec_vals(cmd).to_string();
 
         let about = cmd
             .get_about()
@@ -1008,7 +1010,7 @@ impl HelpTemplate<'_, '_> {
         self.help(None, about, spec_vals, next_line_help, longest);
     }
 
-    fn sc_spec_vals(&self, a: &Command) -> String {
+    fn sc_spec_vals(&self, a: &Command) -> impl Display {
         debug!("HelpTemplate::sc_spec_vals: a={}", a.get_name());
         let ctx = &self.styles.get_context();
         let ctx_val = &self.styles.get_context_value();
@@ -1027,8 +1029,8 @@ impl HelpTemplate<'_, '_> {
             .get_visible_aliases()
             .map(|s| format!("{ctx_val}{s}{ctx_val:#}"));
         short_als.extend(als);
-        let all_als = short_als.join(&val_sep);
-        if !all_als.is_empty() {
+
+        if !short_als.is_empty() {
             debug!(
                 "HelpTemplate::spec_vals: Found aliases...{:?}",
                 a.get_all_aliases().collect::<Vec<_>>()
@@ -1042,15 +1044,22 @@ impl HelpTemplate<'_, '_> {
                 a.get_all_long_flag_aliases().collect::<Vec<_>>()
             );
             let plural = pluralize(short_als.len(), "", "es");
+
+            let all_als = short_als.join_display(&val_sep);
             spec_vals.push(format!(
                 "{ctx}[alias{plural}: {ctx:#}{all_als}{ctx}]{ctx:#}"
             ));
         }
 
-        spec_vals.join(" ")
+        spec_vals.join_display(" ")
     }
 
-    fn subcommand_next_line_help(&self, cmd: &Command, spec_vals: &str, longest: usize) -> bool {
+    fn subcommand_next_line_help(
+        &self,
+        cmd: &Command,
+        spec_vals: impl Display,
+        longest: usize,
+    ) -> bool {
         // Ignore `self.use_long` since subcommands are only shown as short help
         if self.next_line_help {
             // setting_next_line
@@ -1061,7 +1070,7 @@ impl HelpTemplate<'_, '_> {
                 .get_about()
                 .or_else(|| cmd.get_long_about())
                 .unwrap_or_default();
-            let h_w = h.display_width() + display_width(spec_vals);
+            let h_w = h.display_width() + display_width(&spec_vals.to_string());
             let taken = longest + TAB_WIDTH * 2;
             self.term_w >= taken
                 && (taken as f32 / self.term_w as f32) > 0.40

@@ -11,7 +11,6 @@ use std::{
 
 // Internal
 use super::{ArgFlags, ArgSettings};
-use crate::ArgAction;
 use crate::INTERNAL_ERROR_MSG;
 use crate::Id;
 use crate::ValueHint;
@@ -27,6 +26,7 @@ use crate::builder::ValueRange;
 use crate::builder::ext::Extension;
 use crate::builder::ext::Extensions;
 use crate::util::AnyValueId;
+use crate::{ArgAction, util::join_display::JoinDisplayVecExt};
 
 /// The abstract representation of a command line argument. Used to set all the options and
 /// relationships that define a valid argument for the program.
@@ -4636,7 +4636,8 @@ impl Arg {
                     .iter()
                     .map(|n| format!("<{n}>"))
                     .collect::<Vec<_>>()
-                    .join(delim)
+                    .join_display(delim)
+                    .to_string()
             } else {
                 self.val_names
                     .first()

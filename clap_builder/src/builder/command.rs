@@ -27,6 +27,7 @@ use crate::output::fmt::Stream;
 use crate::output::{Usage, fmt::Colorizer, write_help};
 use crate::parser::{ArgMatcher, ArgMatches, Parser};
 use crate::util::ChildGraph;
+use crate::util::join_display::JoinDisplayVecExt;
 use crate::util::{Id, color::ColorChoice};
 use crate::{Error, INTERNAL_ERROR_MSG};
 
@@ -4705,7 +4706,7 @@ impl Command {
                 args_missing_help.is_empty(),
                 "Command::help_expected is enabled for the Command {}, but at least one of its arguments does not have either `help` or `long_help` set. List of such arguments: {}",
                 self.name,
-                args_missing_help.join(", ")
+                args_missing_help.join_display(", ")
             );
         }
 
@@ -4927,7 +4928,7 @@ impl Command {
                 }
             })
             .collect::<Vec<_>>()
-            .join("|");
+            .join_display("|");
         let placeholder = self.get_styles().get_placeholder();
         let mut styled = StyledStr::new();
         write!(&mut styled, "{placeholder}<{g_string}>{placeholder:#}").unwrap();

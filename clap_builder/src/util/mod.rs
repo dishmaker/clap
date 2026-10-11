@@ -6,6 +6,7 @@ pub(crate) mod flat_map;
 pub(crate) mod flat_set;
 mod graph;
 mod id;
+pub(crate) mod join_display;
 mod str_to_bool;
 
 pub use self::id::Id;

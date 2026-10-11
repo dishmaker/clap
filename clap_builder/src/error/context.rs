@@ -1,7 +1,8 @@
+use crate::util::join_display::JoinDisplayExt;
+
 /// Semantics for a piece of error information
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
-#[cfg(feature = "error-context")]
 pub enum ContextKind {
     /// The cause of the error
     InvalidSubcommand,
@@ -73,7 +74,6 @@ impl std::fmt::Display for ContextKind {
 /// A piece of error information
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-#[cfg(feature = "error-context")]
 pub enum ContextValue {
     /// [`ContextKind`] is self-sufficient, no additional information needed
     None,
@@ -97,7 +97,7 @@ impl std::fmt::Display for ContextValue {
             Self::None => "".fmt(f),
             Self::Bool(v) => v.fmt(f),
             Self::String(v) => v.fmt(f),
-            Self::Strings(v) => v.join(", ").fmt(f),
+            Self::Strings(v) => v.as_slice().join_display(", ").fmt(f),
             Self::StyledStr(v) => v.fmt(f),
             Self::StyledStrs(v) => {
                 for (i, v) in v.iter().enumerate() {
